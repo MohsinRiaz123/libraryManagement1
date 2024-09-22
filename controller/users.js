@@ -1,56 +1,163 @@
-const {User} = require('../models/users');
+const UserModel = require('../models/users');
 
-const createUser = async (req, res) => {
+const addUser = async (req, res, next) => {
     try {
-        const user = new User(req.body);
+        const user = new UserModel(req.body);
         await user.save();
-        res.status(200).send(user);
+        res.status(200).json({
+            message: "Successfully added",
+            user: user
+        });
     } catch (error) {
-        res.status(400).send({ error: 'User not created' });
-    }
-};
-const getAllUsers = async (req, res) => {
-    try {
-        const users = await User.find();
-        res.status(200).send(users);
-    } catch (error) {
-        res.status(500).send({ error: 'Data not found' });
+        next(error)
     }
 };
 
-const getUserById = async (req, res) => {
+
+
+
+const getUsers = async (req, res, next) => {
     try {
-        const user = await User.findById(req.params.id);
-        if (!user) {
-            return res.status(404).send({ error: 'User not found' });
-        }
-        res.status(200).send(user);
+        const users = await UserModel.find();
+        res.status(200).json({
+            message: "Successfully displayed all users",
+            users: users
+        });
     } catch (error) {
-        res.status(500).send({ error:"Internal server error" });
+        next(error)
     }
 };
 
-const updateUser = async (req, res) => {
+const getUserWithId = async (req, res, next) => {
     try {
-        const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const user = await UserModel.findById(req.params.id);
         if (!user) {
-            return res.status(404).send({ error: 'User not found' });
+            return res.status(404).json({ message: "User not found" });
         }
-        res.status(200).send(user);
+        res.status(200).json({
+            message: `Successfully displayed user with id: ${req.params.id}`,
+            user: user
+        });
     } catch (error) {
-        res.status(500).send({ error:"Internal server error" });
+        next(error)
+    }
+};
+    
+const updateUserWithId = async (req, res, next) => {
+    try {
+        const user = await UserModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        res.status(200).json({
+            message: `Successfully updated user with id: ${req.params.id}`,
+            user: user
+        });
+    } catch (error) {
+        next(error)
     }
 };
 
-const deleteUser = async (req, res) => {
+const deleteUserWithId = async (req, res, next) => {
     try {
-        const user = await User.findByIdAndDelete(req.params.id);
+        const user = await UserModel.findByIdAndDelete(req.params.id);
         if (!user) {
-            return res.status(404).send({ error: 'User not found' });
+            return res.status(404).json({ message: "User not found" });
         }
-        res.status(200).send({ message: 'User deleted' });
+        res.status(200).json({
+            message: `Successfully deleted user with id: ${req.params.id}`,
+            user: user
+        });
     } catch (error) {
-        res.status(500).send({ error: "Internal server error" });
+        next(error)
     }
 };
-module.exports={createUser,getAllUsers,getUserById,updateUser,deleteUser};
+
+const borrowBook = async (req, res, next) => {
+    try {
+        const user = await UserModel.findById(req.params.id).populate('borrowedBooks');
+        const book = await BookModel.findById(req.params.bookId);
+
+        if (!user || !book) {
+            return res.status(404).json({ message: 'User or book not found' });
+        }
+
+        if (!book.available) {
+            return res.status(400).json({ message: 'Book is not available for borrowing' });
+        }
+
+        user.borrowedBooks.push(book._id);
+        book.available = false;
+        await user.save();
+        await book.save();
+        console.log(borrowedBooks);
+        // console.log(user);
+
+        res.status(200).json({
+            message: 'Successfully borrowed the book',
+            book: book
+        });
+    } catch (error) {
+        next(error)
+    }
+};
+
+// Return a book
+const returnBook = async (req, res, next) => {
+    try {
+        const user = await UserModel.findById(req.params.id).populate('borrowedBooks');;
+        const book = await BookModel.findById(req.params.bookId);
+
+        if (!user || !book) {
+            return res.status(404).json({ message: 'User or book not found' });
+        }
+
+        if (!user.borrowedBooks.includes(req.params.bookId)) {
+            return res.status(400).json({ message: 'Book not borrowed by this user' });
+        }
+
+        user.borrowedBooks = user.borrowedBooks.filter(
+            (bookId) => bookId.toString() !== req.params.bookId
+        );
+        book.available = true;
+        await user.save();
+        await book.save();
+
+        res.status(200).json({
+            message: 'Successfully returned the book',
+            book: book
+        });
+    } catch (error) {
+        next(error)
+    }
+};
+
+// View borrowed books
+const viewBorrowedBooks = async (req, res, next) => {
+    try {
+        const user = await UserModel.findById(req.params.id).populate('borrowedBooks');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({
+            message: 'Successfully fetched borrowed books',
+            borrowedBooks: user.borrowedBooks
+        });
+    } catch (error) {
+        next(error)
+    }
+};
+
+
+module.exports = {
+    addUser,
+    getUsers,
+    getUserWithId,
+    updateUserWithId,
+    deleteUserWithId,
+    borrowBook,
+    returnBook,
+    viewBorrowedBooks
+};

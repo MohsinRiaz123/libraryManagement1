@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
-const userSchema = new mongoose.Schema({
+const UserSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
@@ -16,15 +16,29 @@ const userSchema = new mongoose.Schema({
     },
     age: {
         type: Number,
+        required: true,
     },
     role: {
         type: String,
         required: true,
     },
-    createdAt: {
-        type: Date,
-        default: Date.now,
+    resetOTP:{
+        type: Number,
+        default:null,
     },
-});
+    createAt: {
+        type: Date,
+        default: Date.now(),
+    },
+    borrowedBooks: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'book'  // Reference to Book model
+        }
+    ],
+   
+})
 
-exports.User=mongoose.model('User',userSchema);
+
+const user = mongoose.model('users', UserSchema)
+module.exports = user
